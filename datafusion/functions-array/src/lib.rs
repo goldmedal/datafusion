@@ -53,6 +53,8 @@ pub mod set_ops;
 pub mod sort;
 pub mod string;
 pub mod utils;
+pub mod map;
+
 use datafusion_common::Result;
 use datafusion_execution::FunctionRegistry;
 use datafusion_expr::ScalarUDF;

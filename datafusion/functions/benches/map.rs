@@ -23,7 +23,7 @@ use arrow_buffer::{OffsetBuffer, ScalarBuffer};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use datafusion_common::ScalarValue;
 use datafusion_expr::ColumnarValue;
-use datafusion_functions::core::map;
+use datafusion_functions::core::map_udf;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::sync::Arc;
@@ -68,7 +68,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         b.iter(|| {
             black_box(
-                map()
+                map_udf()
                     .invoke(&[keys.clone(), values.clone()])
                     .expect("map should work on valid values"),
             );

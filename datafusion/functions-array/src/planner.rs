@@ -24,6 +24,7 @@ use datafusion_expr::{
     planner::{ExprPlanner, PlannerResult, RawBinaryExpr, RawFieldAccessExpr},
     sqlparser, Expr, ExprSchemable, GetFieldAccess,
 };
+use datafusion_functions::core::map_udf;
 use datafusion_functions::expr_fn::get_field;
 use datafusion_functions_aggregate::nth_value::nth_value_udaf;
 
@@ -112,7 +113,7 @@ impl ExprPlanner for ArrayFunctionPlanner {
 
         Ok(PlannerResult::Planned(Expr::ScalarFunction(
             ScalarFunction::new_udf(
-                datafusion_functions::core::map(),
+                map_udf(),
                 vec![keys, values],
             ),
         )))

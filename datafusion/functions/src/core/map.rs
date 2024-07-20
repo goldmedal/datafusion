@@ -23,9 +23,11 @@ use arrow::array::{Array, ArrayData, ArrayRef, MapArray, StructArray};
 use arrow::datatypes::{DataType, Field, SchemaBuilder};
 use arrow_buffer::{Buffer, ToByteSlice};
 
-use datafusion_common::Result;
 use datafusion_common::{exec_err, ScalarValue};
+use datafusion_common::Result;
 use datafusion_expr::{ColumnarValue, ScalarUDFImpl, Signature, Volatility};
+
+make_udf_function!(MapFunc, MAP, map_udf);
 
 /// Check if we can evaluate the expr to constant directly.
 ///
