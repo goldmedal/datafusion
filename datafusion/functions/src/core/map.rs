@@ -64,7 +64,6 @@ fn make_map_batch_one_args(args: &[ColumnarValue]) -> Result<ColumnarValue> {
     let val_iter = args[len..].iter().map(get_scalar_from_col);
     let value = ScalarValue::iter_to_array(val_iter)?;
 
-
     let key = get_first_element(key);
     let value = get_first_element(value);
     let can_evaluate_to_const = can_evaluate_to_const(args);
