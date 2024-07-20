@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use arrow::array::{Array, ArrayData, ArrayRef, FixedSizeListArray, LargeListArray, ListArray, MapArray, StructArray};
 use arrow::datatypes::{DataType, Field, SchemaBuilder};
-use arrow::datatypes::DataType::{Int32, Utf8};
+use arrow::datatypes::DataType::Int32;
 use arrow_buffer::{Buffer, ToByteSlice};
 
 use datafusion_common::{exec_err, ScalarValue};
@@ -288,7 +288,7 @@ impl ScalarUDFImpl for MapOneFunc {
         // TODO: get the correct type
         builder.push(Field::new(
             "key",
-            Utf8,
+            Int32,
             false,
         ));
         builder.push(Field::new(

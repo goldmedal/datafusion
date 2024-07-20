@@ -14,10 +14,10 @@ use datafusion_functions_array::map::{map, map_from_array};
 
 mod data_utils;
 
-fn keys(rng: &mut ThreadRng) -> Vec<String> {
+fn keys(rng: &mut ThreadRng) -> Vec<i32> {
     let mut keys = vec![];
     for _ in 0..1000 {
-        keys.push(rng.gen_range(0..9999).to_string());
+        keys.push(rng.gen_range(0..9999));
     }
     keys
 }
@@ -53,7 +53,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut value_buffer = Vec::new();
 
     for i in 0..1000 {
-        key_buffer.push(Expr::Literal(ScalarValue::Utf8(Some(keys[i].clone()))));
+        key_buffer.push(Expr::Literal(ScalarValue::Int32(Some(keys[i]))));
         value_buffer.push(Expr::Literal(ScalarValue::Int32(Some(values[i]))));
     }
     c.bench_function("map_1000", |b| {
