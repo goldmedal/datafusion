@@ -17,7 +17,7 @@
 
 use datafusion_expr::Expr;
 use datafusion_expr::expr::ScalarFunction;
-use datafusion_functions::core::map::map_udf;
+use datafusion_functions::core::map::{map_one_udf, map_udf};
 use crate::make_array::make_array;
 
 pub fn map(keys: Vec<Expr>, values: Vec<Expr>) -> Expr {
@@ -25,6 +25,15 @@ pub fn map(keys: Vec<Expr>, values: Vec<Expr>) -> Expr {
     let values = make_array(values);
     Expr::ScalarFunction(ScalarFunction::new_udf(
         map_udf(),
+        vec![keys, values],
+    ))
+}
+
+pub fn map_from_array(keys: Vec<Expr>, values: Vec<Expr>) -> Expr {
+    let keys = make_array(keys);
+    let values = make_array(values);
+    Expr::ScalarFunction(ScalarFunction::new_udf(
+        map_one_udf(),
         vec![keys, values],
     ))
 }

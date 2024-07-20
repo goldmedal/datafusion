@@ -19,8 +19,9 @@ use std::any::Any;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayData, ArrayRef, MapArray, StructArray};
+use arrow::array::{Array, ArrayData, ArrayRef, FixedSizeListArray, LargeListArray, ListArray, MapArray, StructArray};
 use arrow::datatypes::{DataType, Field, SchemaBuilder};
+use arrow::datatypes::DataType::{Int32, Utf8};
 use arrow_buffer::{Buffer, ToByteSlice};
 
 use datafusion_common::{exec_err, ScalarValue};
@@ -28,6 +29,7 @@ use datafusion_common::Result;
 use datafusion_expr::{ColumnarValue, ScalarUDFImpl, Signature, Volatility};
 
 make_udf_function!(MapFunc, MAP, map_udf);
+make_udf_function!(MapOneFunc, MAP_ONE, map_one_udf);
 
 /// Check if we can evaluate the expr to constant directly.
 ///
@@ -39,6 +41,52 @@ make_udf_function!(MapFunc, MAP, map_udf);
 fn can_evaluate_to_const(args: &[ColumnarValue]) -> bool {
     args.iter()
         .all(|arg| matches!(arg, ColumnarValue::Scalar(_)))
+}
+
+fn get_scalar_from_col(c: &ColumnarValue) -> ScalarValue {
+    match c {
+        ColumnarValue::Scalar(s) => s.clone(),
+        _ => todo!(""),
+    }
+}
+
+fn make_map_batch_one_args(args: &[ColumnarValue]) -> Result<ColumnarValue> {
+    if args.len() % 2 != 0 {
+        return exec_err!(
+            "make_map requires exactly 2 arguments, got {} instead",
+            args.len()
+        );
+    }
+
+    let len = args.len() / 2;
+    let key_iter = args[0..len].iter().map(get_scalar_from_col);
+    let key = ScalarValue::iter_to_array(key_iter)?;
+    let val_iter = args[len..].iter().map(get_scalar_from_col);
+    let value = ScalarValue::iter_to_array(val_iter)?;
+
+
+    let key = get_first_element(key);
+    let value = get_first_element(value);
+    let can_evaluate_to_const = can_evaluate_to_const(args);
+    make_map_batch_internal(key, value, can_evaluate_to_const)
+}
+
+fn get_first_element(value: ArrayRef) -> ArrayRef {
+    match value.data_type() {
+        DataType::List(_) => {
+            let list_array = value.as_any().downcast_ref::<ListArray>().unwrap();
+            list_array.value(0)
+        }
+        DataType::LargeList(_) => {
+            let list_array = value.as_any().downcast_ref::<LargeListArray>().unwrap();
+            list_array.value(0)
+        }
+        DataType::FixedSizeList(_, _) => {
+            let list_array = value.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
+            list_array.value(0)
+        }
+        _ => value,
+    }
 }
 
 fn make_map_batch(args: &[ColumnarValue]) -> Result<ColumnarValue> {
@@ -191,5 +239,72 @@ fn get_element_type(data_type: &DataType) -> Result<&DataType> {
             "Expected list, large_list or fixed_size_list, got {:?}",
             data_type
         ),
+    }
+}
+
+#[derive(Debug)]
+pub struct MapOneFunc {
+    signature: Signature,
+}
+
+impl Default for MapOneFunc {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MapOneFunc {
+    pub fn new() -> Self {
+        Self {
+            signature: Signature::variadic_any(Volatility::Immutable),
+        }
+    }
+}
+
+impl ScalarUDFImpl for MapOneFunc {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn name(&self) -> &str {
+        "map_one"
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    fn return_type(&self, arg_types: &[DataType]) -> Result<DataType> {
+        if arg_types.len() == 1 {
+            return exec_err!(
+                "map_one only accepts 1 arguments, got {} instead",
+                arg_types.len()
+            );
+        }
+
+        // let key_type = &arg_types[0];
+        // let val_type = arg_types.last().unwrap();
+        //
+        let mut builder = SchemaBuilder::new();
+        // TODO: get the correct type
+        builder.push(Field::new(
+            "key",
+            Utf8,
+            false,
+        ));
+        builder.push(Field::new(
+            "value",
+           Int32,
+            true,
+        ));
+        let fields = builder.finish().fields;
+        Ok(DataType::Map(
+            Arc::new(Field::new("entries", DataType::Struct(fields), false)),
+            false,
+        ))
+    }
+
+    fn invoke(&self, args: &[ColumnarValue]) -> Result<ColumnarValue> {
+        make_map_batch_one_args(args)
     }
 }
