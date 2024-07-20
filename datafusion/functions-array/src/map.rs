@@ -29,9 +29,7 @@ pub fn map(keys: Vec<Expr>, values: Vec<Expr>) -> Expr {
     ))
 }
 
-pub fn map_from_array(keys: Vec<Expr>, values: Vec<Expr>) -> Expr {
-    let mut args = keys;
-    args.extend(values);
+pub fn map_from_array(args: Vec<Expr>) -> Expr {
     Expr::ScalarFunction(ScalarFunction::new_udf(
         map_one_udf(),
         args,

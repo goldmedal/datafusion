@@ -69,14 +69,15 @@ fn criterion_benchmark(c: &mut Criterion) {
             );
         });
     });
+    let mut args = key_buffer;
+    args.extend(value_buffer);
     c.bench_function("map_one_1000", |b| {
         b.iter(|| {
             black_box(
                 rt.block_on(
                     df.clone()
                         .select(vec![map_from_array(
-                            key_buffer.clone(),
-                            value_buffer.clone(),
+                            args.clone()
                         )])
                         .unwrap()
                         .collect(),
