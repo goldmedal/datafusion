@@ -23,9 +23,11 @@ use datafusion_expr::planner::{
 use recursive::recursive;
 use sqlparser::ast::{
     BinaryOperator, CastFormat, CastKind, DataType as SQLDataType, DictionaryField,
-    Expr as SQLExpr, MapEntry, StructField, Subscript, TrimWhereField, Value,
+    Expr as SQLExpr, MapAccessKey, MapAccessSyntax, MapEntry, StructField, Subscript,
+    TrimWhereField, Value,
 };
 
+use crate::planner::{ContextProvider, PlannerContext, SqlToRel};
 use datafusion_common::{
     internal_datafusion_err, internal_err, not_impl_err, plan_err, DFSchema, Result,
     ScalarValue,
@@ -36,8 +38,6 @@ use datafusion_expr::{
     lit, Between, BinaryExpr, Cast, Expr, ExprSchemable, GetFieldAccess, Like, Literal,
     Operator, TryCast,
 };
-
-use crate::planner::{ContextProvider, PlannerContext, SqlToRel};
 
 mod binary_op;
 mod function;
@@ -209,8 +209,9 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
                 self.sql_identifier_to_expr(id, schema, planner_context)
             }
 
-            SQLExpr::MapAccess { .. } => {
-                not_impl_err!("Map Access")
+            // <expr>.<field>
+            SQLExpr::MapAccess { column, keys } => {
+                self.sql_map_access_to_expr(*column, keys, schema, planner_context)
             }
 
             // <expr>["foo"], <expr>[4] or <expr>[4:5]
@@ -1035,6 +1036,77 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
         not_impl_err!(
             "GetFieldAccess not supported by ExprPlanner: {field_access_expr:?}"
         )
+    }
+
+    fn sql_map_access_to_expr(
+        &self,
+        expr: SQLExpr,
+        keys: Vec<MapAccessKey>,
+        schema: &DFSchema,
+        planner_context: &mut PlannerContext,
+    ) -> Result<Expr> {
+        let head =
+            self.sql_expr_to_logical_expr(expr.clone(), schema, planner_context)?;
+        let data_type = head.get_type(schema)?;
+        let field_accesses = keys
+            .iter()
+            .map(|key| match &key.syntax {
+                MapAccessSyntax::Bracket => match data_type {
+                    DataType::List(_)
+                    | DataType::FixedSizeList(_, _)
+                    | DataType::LargeList(_) => Ok(GetFieldAccess::ListIndex {
+                        key: Box::new(self.sql_expr_to_logical_expr(
+                            key.key.clone(),
+                            schema,
+                            planner_context,
+                        )?),
+                    }),
+                    DataType::Map(_, _) | DataType::Struct(_) => {
+                        let name = get_string_value(&key.key)?;
+                        Ok(GetFieldAccess::NamedStructField { name })
+                    }
+                    _ => not_impl_err!(
+                        "MapAccessKey not supported for data type: {data_type}"
+                    ),
+                },
+                MapAccessSyntax::Period => match data_type {
+                    DataType::Map(_, _) | DataType::Struct(_) => {
+                        let name = get_string_value(&key.key)?;
+                        Ok(GetFieldAccess::NamedStructField { name })
+                    }
+                    _ => not_impl_err!(
+                        "MapAccessKey not supported for data type: {data_type}"
+                    ),
+                },
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        field_accesses
+            .into_iter()
+            .try_fold(head, |expr, field_access| {
+                let mut field_access_expr = RawFieldAccessExpr { expr, field_access };
+                for planner in self.context_provider.get_expr_planners() {
+                    match planner.plan_field_access(field_access_expr, schema)? {
+                        PlannerResult::Planned(expr) => return Ok(expr),
+                        PlannerResult::Original(expr) => {
+                            field_access_expr = expr;
+                        }
+                    }
+                }
+                not_impl_err!(
+                    "MapAccessKey not supported by ExprPlanner: {field_access_expr:?}"
+                )
+            })
+    }
+}
+
+fn get_string_value(expr: &SQLExpr) -> Result<ScalarValue> {
+    match expr {
+        SQLExpr::Value(Value::SingleQuotedString(s) | Value::DoubleQuotedString(s)) => {
+            Ok(ScalarValue::from(s.clone()))
+        }
+        SQLExpr::Identifier(id) => Ok(ScalarValue::from(id.value.clone())),
+        _ => not_impl_err!("Expected string value or identifier, found: {expr:?}"),
     }
 }
 

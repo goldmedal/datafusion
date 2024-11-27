@@ -54,13 +54,13 @@ use datafusion_expr::{
     TransactionConclusion, TransactionEnd, TransactionIsolationLevel, TransactionStart,
     Volatility, WriteOp,
 };
-use sqlparser::ast::{self, SqliteOnConflict};
+use sqlparser::ast::{self, ShowStatementOptions, SqliteOnConflict};
 use sqlparser::ast::{
     Assignment, AssignmentTarget, ColumnDef, CreateIndex, CreateTable,
     CreateTableOptions, Delete, DescribeAlias, Expr as SQLExpr, FromTable, Ident, Insert,
     ObjectName, ObjectType, OneOrManyWithParens, Query, SchemaName, SetExpr,
-    ShowCreateObject, ShowStatementFilter, Statement, TableConstraint, TableFactor,
-    TableWithJoins, TransactionMode, UnaryOperator, Value,
+    ShowCreateObject, Statement, TableConstraint, TableFactor, TableWithJoins,
+    TransactionMode, UnaryOperator, Value,
 };
 use sqlparser::parser::ParserError::ParserError;
 
@@ -683,21 +683,26 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
             ))),
 
             Statement::ShowTables {
+                terse,
+                history,
                 extended,
                 full,
-                db_name,
-                filter,
-                // SHOW TABLES IN/FROM are equivalent, this field specifies which the user
-                // specified, but it doesn't affect the plan so ignore the field
-                clause: _,
-            } => self.show_tables_to_plan(extended, full, db_name, filter),
+                external,
+                show_options,
+            } => self.show_tables_to_plan(
+                terse,
+                history,
+                extended,
+                full,
+                external,
+                show_options,
+            ),
 
             Statement::ShowColumns {
                 extended,
                 full,
-                table_name,
-                filter,
-            } => self.show_columns_to_plan(extended, full, table_name, filter),
+                show_options,
+            } => self.show_columns_to_plan(extended, full, show_options),
 
             Statement::Insert(Insert {
                 or,
@@ -766,9 +771,13 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
                 from,
                 selection,
                 returning,
+                or,
             } => {
                 if returning.is_some() {
                     plan_err!("Update-returning clause not yet supported")?;
+                }
+                if or.is_some() {
+                    plan_err!("Update-or clause not yet supported")?;
                 }
                 self.update_to_plan(table, assignments, from, selection)
             }
@@ -1067,15 +1076,17 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
     /// Generate a logical plan from a "SHOW TABLES" query
     fn show_tables_to_plan(
         &self,
+        terse: bool,
+        history: bool,
         extended: bool,
         full: bool,
-        db_name: Option<Ident>,
-        filter: Option<ShowStatementFilter>,
+        external: bool,
+        _show_options: ShowStatementOptions,
     ) -> Result<LogicalPlan> {
         if self.has_table("information_schema", "tables") {
             // We only support the basic "SHOW TABLES"
             // https://github.com/apache/datafusion/issues/3188
-            if db_name.is_some() || filter.is_some() || full || extended {
+            if terse || history || full || extended || external {
                 plan_err!("Unsupported parameters to SHOW TABLES")
             } else {
                 let query = "SELECT * FROM information_schema.tables;";
@@ -1841,18 +1852,20 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
         &self,
         extended: bool,
         full: bool,
-        sql_table_name: ObjectName,
-        filter: Option<ShowStatementFilter>,
+        show_options: ShowStatementOptions,
     ) -> Result<LogicalPlan> {
-        if filter.is_some() {
-            return plan_err!("SHOW COLUMNS with WHERE or LIKE is not supported");
-        }
-
         if !self.has_table("information_schema", "columns") {
             return plan_err!(
                 "SHOW COLUMNS is not supported unless information_schema is enabled"
             );
         }
+        if show_options.filter_position.is_some() {
+            return plan_err!("SHOW COLUMNS with WHERE or LIKE is not supported");
+        }
+        let Some(sql_table_name) = show_options.show_in.and_then(|i| i.parent_name)
+        else {
+            return plan_err!("SHOW COLUMNS is not supported without a table name");
+        };
         // Figure out the where clause
         let where_clause = object_name_to_qualifier(
             &sql_table_name,
