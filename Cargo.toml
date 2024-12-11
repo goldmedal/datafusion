@@ -147,7 +147,7 @@ recursive = "0.1.1"
 regex = "1.8"
 rstest = "0.23.0"
 serde_json = "1"
-sqlparser = { version = "0.53.0", features = ["visitor"] }
+sqlparser = { git = "https://github.com/apache/datafusion-sqlparser-rs.git", rev ="df3c5652b10493df4db484f358514bb210673744", features = ["visitor"] }
 tempfile = "3"
 tokio = { version = "1.36", features = ["macros", "rt", "sync"] }
 url = "2.2"
