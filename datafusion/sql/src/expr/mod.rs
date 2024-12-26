@@ -22,9 +22,8 @@ use datafusion_expr::planner::{
 };
 use sqlparser::ast::{
     AccessExpr, BinaryOperator, CastFormat, CastKind, DataType as SQLDataType,
-    DictionaryField, Expr as SQLExpr, ExprWithAlias as SQLExprWithAlias, MapEntry, StructField, Subscript,
-    TrimWhereField,
-    Value,
+    DictionaryField, Expr as SQLExpr, ExprWithAlias as SQLExprWithAlias, MapEntry,
+    StructField, Subscript, TrimWhereField, Value,
 };
 
 use datafusion_common::{
