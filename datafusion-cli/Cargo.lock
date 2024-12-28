@@ -1757,7 +1757,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3142,7 +3142,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3402,7 +3402,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3765,7 +3765,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 [[package]]
 name = "sqlparser"
 version = "0.53.0"
-source = "git+https://github.com/apache/datafusion-sqlparser-rs.git?rev=e9c3305008b4e0a28fb42a2fe6b18b3bd2a8291b#e9c3305008b4e0a28fb42a2fe6b18b3bd2a8291b"
+source = "git+https://github.com/apache/datafusion-sqlparser-rs.git?rev=6cbcfda74618e9d42caf4875b135288be1594cf0#6cbcfda74618e9d42caf4875b135288be1594cf0"
 dependencies = [
  "log",
  "recursive",
@@ -3775,7 +3775,7 @@ dependencies = [
 [[package]]
 name = "sqlparser_derive"
 version = "0.3.0"
-source = "git+https://github.com/apache/datafusion-sqlparser-rs.git?rev=e9c3305008b4e0a28fb42a2fe6b18b3bd2a8291b#e9c3305008b4e0a28fb42a2fe6b18b3bd2a8291b"
+source = "git+https://github.com/apache/datafusion-sqlparser-rs.git?rev=6cbcfda74618e9d42caf4875b135288be1594cf0#6cbcfda74618e9d42caf4875b135288be1594cf0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3798,7 +3798,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3879,7 +3879,7 @@ dependencies = [
  "fastrand",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
