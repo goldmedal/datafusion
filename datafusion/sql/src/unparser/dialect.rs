@@ -17,17 +17,17 @@
 
 use std::sync::Arc;
 
+use super::{utils::character_length_to_sql, utils::date_part_to_sql, Unparser};
 use arrow_schema::TimeUnit;
 use datafusion_common::Result;
 use datafusion_expr::Expr;
 use regex::Regex;
+use sqlparser::ast::ExactNumberInfo;
 use sqlparser::tokenizer::Span;
 use sqlparser::{
     ast::{self, BinaryOperator, Function, Ident, ObjectName, TimezoneInfo},
     keywords::ALL_KEYWORDS,
 };
-
-use super::{utils::character_length_to_sql, utils::date_part_to_sql, Unparser};
 
 /// `Dialect` to use for Unparsing
 ///
@@ -60,7 +60,7 @@ pub trait Dialect: Send + Sync {
     /// Does the dialect use DOUBLE PRECISION to represent Float64 rather than DOUBLE?
     /// E.g. Postgres uses DOUBLE PRECISION instead of DOUBLE
     fn float64_ast_dtype(&self) -> ast::DataType {
-        ast::DataType::Double
+        ast::DataType::Double(ExactNumberInfo::None)
     }
 
     /// The SQL type to use for Arrow Utf8 unparsing
@@ -272,13 +272,13 @@ impl PostgreSqlDialect {
         {
             if let ast::Expr::Cast { data_type, .. } = expr {
                 // Don't create an additional cast wrapper if we can update the existing one
-                *data_type = ast::DataType::Numeric(ast::ExactNumberInfo::None);
+                *data_type = ast::DataType::Numeric(ExactNumberInfo::None);
             } else {
                 // Wrap the expression in a new cast
                 *expr = ast::Expr::Cast {
                     kind: ast::CastKind::Cast,
                     expr: Box::new(expr.clone()),
-                    data_type: ast::DataType::Numeric(ast::ExactNumberInfo::None),
+                    data_type: ast::DataType::Numeric(ExactNumberInfo::None),
                     format: None,
                 };
             }
@@ -469,7 +469,7 @@ impl Default for CustomDialect {
             supports_nulls_first_in_sort: true,
             use_timestamp_for_date64: false,
             interval_style: IntervalStyle::SQLStandard,
-            float64_ast_dtype: ast::DataType::Double,
+            float64_ast_dtype: ast::DataType::Double(ExactNumberInfo::None),
             utf8_cast_dtype: ast::DataType::Varchar(None),
             large_utf8_cast_dtype: ast::DataType::Text,
             date_field_extract_style: DateFieldExtractStyle::DatePart,
@@ -650,7 +650,7 @@ impl CustomDialectBuilder {
             supports_nulls_first_in_sort: true,
             use_timestamp_for_date64: false,
             interval_style: IntervalStyle::PostgresVerbose,
-            float64_ast_dtype: ast::DataType::Double,
+            float64_ast_dtype: ast::DataType::Double(ExactNumberInfo::None),
             utf8_cast_dtype: ast::DataType::Varchar(None),
             large_utf8_cast_dtype: ast::DataType::Text,
             date_field_extract_style: DateFieldExtractStyle::DatePart,

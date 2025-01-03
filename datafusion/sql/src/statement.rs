@@ -56,7 +56,7 @@ use datafusion_expr::{
 };
 use sqlparser::ast::{
     self, BeginTransactionKind, NullsDistinctOption, ShowStatementIn,
-    ShowStatementOptions, SqliteOnConflict,
+    ShowStatementOptions, SqliteOnConflict, UpdateTableFromKind,
 };
 use sqlparser::ast::{
     Assignment, AssignmentTarget, ColumnDef, CreateIndex, CreateTable,
@@ -890,6 +890,10 @@ impl<S: ContextProvider> SqlToRel<'_, S> {
                 if or.is_some() {
                     plan_err!("ON conflict not supported")?;
                 }
+                let from = from.map(|update| match update {
+                    UpdateTableFromKind::BeforeSet(t)
+                    | UpdateTableFromKind::AfterSet(t) => t,
+                });
                 self.update_to_plan(table, assignments, from, selection)
             }
 
