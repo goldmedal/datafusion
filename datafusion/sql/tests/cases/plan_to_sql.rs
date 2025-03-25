@@ -31,8 +31,9 @@ use datafusion_functions_nested::map::map_udf;
 use datafusion_functions_window::rank::rank_udwf;
 use datafusion_sql::planner::{ContextProvider, PlannerContext, SqlToRel};
 use datafusion_sql::unparser::dialect::{
-    CustomDialectBuilder, DefaultDialect as UnparserDefaultDialect, DefaultDialect,
-    Dialect as UnparserDialect, MySqlDialect as UnparserMySqlDialect, SqliteDialect,
+    BigQueryDialect as UnparserBigqueryDialect, CustomDialectBuilder,
+    DefaultDialect as UnparserDefaultDialect, DefaultDialect, Dialect as UnparserDialect,
+    MySqlDialect as UnparserMySqlDialect, SqliteDialect,
 };
 use datafusion_sql::unparser::{expr_to_sql, plan_to_sql, Unparser};
 use sqlparser::ast::Statement;
@@ -54,7 +55,7 @@ use datafusion_sql::unparser::extension_unparser::{
     UnparseToStatementResult, UnparseWithinStatementResult,
     UserDefinedLogicalNodeUnparser,
 };
-use sqlparser::dialect::{Dialect, GenericDialect, MySqlDialect};
+use sqlparser::dialect::{Dialect, GenericDialect, MySqlDialect, PostgreSqlDialect};
 use sqlparser::parser::Parser;
 
 #[test]
@@ -535,6 +536,30 @@ fn roundtrip_statement_with_dialect() -> Result<()> {
             expected: r#"SELECT * FROM (SELECT `j1`.`j1_id` AS `id2` FROM `j1` LIMIT 1) AS `temp_j`"#,
             parser_dialect: Box::new(GenericDialect {}),
             unparser_dialect: Box::new(SqliteDialect {}),
+        },
+        TestStatementWithDialect {
+            sql: "select min(*) as \"min(*)\" from (select 1 as a)",
+            expected: "SELECT min(*) AS `min_40_42_41` FROM (SELECT 1 AS `a`)",
+            parser_dialect: Box::new(PostgreSqlDialect {}),
+            unparser_dialect: Box::new(UnparserBigqueryDialect::new()),
+        },
+        TestStatementWithDialect {
+            sql: "select a as \"a*\", b as \"b@\" from (select 1 as a , 2 as b)",
+            expected: "SELECT `a` AS `a_42`, `b` AS `b_64` FROM (SELECT 1 AS `a`, 2 AS `b`)",
+            parser_dialect: Box::new(PostgreSqlDialect {}),
+            unparser_dialect: Box::new(UnparserBigqueryDialect::new()),
+        },
+        TestStatementWithDialect {
+            sql: "select a as \"a*\", b , c as \"c@\" from (select 1 as a , 2 as b, 3 as c)",
+            expected: "SELECT `a` AS `a_42`, `b`, `c` AS `c_64` FROM (SELECT 1 AS `a`, 2 AS `b`, 3 AS `c`)",
+            parser_dialect: Box::new(PostgreSqlDialect {}),
+            unparser_dialect: Box::new(UnparserBigqueryDialect::new()),
+        },
+        TestStatementWithDialect {
+            sql: "select * from (select a as \"a*\", b as \"b@\" from (select 1 as a , 2 as b)) where \"a*\" = 1",
+            expected: "SELECT * FROM (SELECT `a` AS `a_42`, `b` AS `b_64` FROM (SELECT 1 AS `a`, 2 AS `b`)) WHERE (`a_42` = 1)",
+            parser_dialect: Box::new(PostgreSqlDialect {}),
+            unparser_dialect: Box::new(UnparserBigqueryDialect::new()),
         },
         TestStatementWithDialect {
             sql: "SELECT * FROM UNNEST([1,2,3])",
