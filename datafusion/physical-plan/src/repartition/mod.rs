@@ -373,7 +373,6 @@ impl BatchPartitioner {
 
                     // Borrowing partitioner timer to prevent moving `self` to closure
                     let partitioner_timer = &self.timer;
-
                     let it = (0..*num_partitions).map(move |partition| {
                         // Tracking time required for repartitioned batches construction
                         let _timer = partitioner_timer.timer();
