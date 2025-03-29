@@ -60,7 +60,7 @@ impl PhysicalOptimizerRule for CoalesceBatches {
             // wrap those ones with a CoalesceBatchesExec operator. An alternate approach here
             // would be to build the coalescing logic directly into the operators
             // See https://github.com/apache/datafusion/issues/139
-            let wrap_in_coalesce = plan_any.downcast_ref::<FilterExec>().is_some()
+            let wrap_in_coalesce = (plan_any.downcast_ref::<FilterExec>().is_some()
                 || plan_any.downcast_ref::<HashJoinExec>().is_some()
                 // Don't need to add CoalesceBatchesExec after a round robin RepartitionExec
                 || plan_any
@@ -71,7 +71,8 @@ impl PhysicalOptimizerRule for CoalesceBatches {
                             Partitioning::RoundRobinBatch(_)
                         )
                     })
-                    .unwrap_or(false);
+                    .unwrap_or(false))
+                && !config.optimizer.prefer_hash_selection_vector_partitioning;
             if wrap_in_coalesce {
                 Ok(Transformed::yes(Arc::new(CoalesceBatchesExec::new(
                     plan,
