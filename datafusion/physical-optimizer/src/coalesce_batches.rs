@@ -66,12 +66,14 @@ impl PhysicalOptimizerRule for CoalesceBatches {
                 || plan_any
                     .downcast_ref::<RepartitionExec>()
                     .map(|repart_exec| {
-                        !matches!(
-                            repart_exec.partitioning().clone(),
-                            Partitioning::RoundRobinBatch(_)
-                        )
+                        match repart_exec.partitioning() {
+                            Partitioning::RoundRobinBatch(_) |
+                            Partitioning::UnknownPartitioning(_) |
+                            Partitioning::HashSelectionVector(_, _) => false,
+                            Partitioning::Hash(_, _) => true,
+                        }
                     })
-                    .unwrap_or(false)_agg;
+                    .unwrap_or(false);
             if wrap_in_coalesce {
                 Ok(Transformed::yes(Arc::new(CoalesceBatchesExec::new(
                     plan,
