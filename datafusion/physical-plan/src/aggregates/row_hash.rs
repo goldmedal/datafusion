@@ -699,6 +699,7 @@ impl Stream for GroupedHashAggregateStream {
                             let timer = elapsed_compute.timer();
 
                             let batch = self.filter_by_selection_vector(batch)?;
+
                             // Make sure we have enough capacity for `batch`, otherwise spill
                             self.spill_previous_if_necessary(&batch)?;
 
