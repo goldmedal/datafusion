@@ -71,7 +71,7 @@ impl PhysicalOptimizerRule for CoalesceBatches {
                             Partitioning::RoundRobinBatch(_)
                         )
                     })
-                    .unwrap_or(false);
+                    .unwrap_or(false)_agg;
             if wrap_in_coalesce {
                 Ok(Transformed::yes(Arc::new(CoalesceBatchesExec::new(
                     plan,
