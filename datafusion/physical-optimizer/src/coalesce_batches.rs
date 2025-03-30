@@ -68,8 +68,8 @@ impl PhysicalOptimizerRule for CoalesceBatches {
                     .map(|repart_exec| {
                         match repart_exec.partitioning() {
                             Partitioning::RoundRobinBatch(_) |
-                            Partitioning::UnknownPartitioning(_) |
                             Partitioning::HashSelectionVector(_, _) => false,
+                            Partitioning::UnknownPartitioning(_) |
                             Partitioning::Hash(_, _) => true,
                         }
                     })
