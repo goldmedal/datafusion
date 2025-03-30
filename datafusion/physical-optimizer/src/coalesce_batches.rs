@@ -72,7 +72,7 @@ impl PhysicalOptimizerRule for CoalesceBatches {
                         )
                     })
                     .unwrap_or(false))
-                && !config.optimizer.prefer_hash_selection_vector_partitioning;
+                && !config.optimizer.prefer_hash_selection_vector_partitioning_agg;
             if wrap_in_coalesce {
                 Ok(Transformed::yes(Arc::new(CoalesceBatchesExec::new(
                     plan,

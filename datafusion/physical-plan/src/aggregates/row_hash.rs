@@ -28,7 +28,7 @@ use crate::aggregates::{
     PhysicalGroupBy,
 };
 use crate::metrics::{BaselineMetrics, MetricBuilder, RecordOutput};
-use crate::repartition::SELECTION_FILED_NAME;
+use crate::repartition::SELECTION_FIELD_NAME;
 use crate::sorts::sort::sort_batch;
 use crate::sorts::streaming_merge::StreamingMergeBuilder;
 use crate::spill::spill_manager::SpillManager;
@@ -1181,7 +1181,7 @@ impl GroupedHashAggregateStream {
     fn filter_by_selection_vector(&self, batch: RecordBatch) -> Result<RecordBatch> {
         if self.selection_vector_partitioning {
             let selection_vector = batch
-                .column_by_name(SELECTION_FILED_NAME)
+                .column_by_name(SELECTION_FIELD_NAME)
                 .unwrap()
                 .as_boolean();
             Ok(arrow::compute::filter_record_batch(
