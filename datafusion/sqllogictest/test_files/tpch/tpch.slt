@@ -21,6 +21,21 @@ include ./create_tables.slt.part
 include ./plans/q*.slt.part
 include ./answers/q*.slt.part
 
+# test hash join with selection vector
+statement ok
+set datafusion.optimizer.prefer_hash_selection_vector_partitioning_agg = true;
+
+statement ok
+set datafusion.optimizer.hash_join_single_partition_threshold = 0;
+
+include ./answers/q*.slt.part
+
+statement ok
+set datafusion.optimizer.prefer_hash_selection_vector_partitioning_agg = false;
+
+statement ok
+set datafusion.optimizer.hash_join_single_partition_threshold = 1048576;
+
 # test answers with sort merge join
 statement ok
 set datafusion.optimizer.prefer_hash_join = false;

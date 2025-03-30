@@ -698,6 +698,7 @@ impl Stream for GroupedHashAggregateStream {
                         Some(Ok(batch)) => {
                             let timer = elapsed_compute.timer();
 
+
                             // Make sure we have enough capacity for `batch`, otherwise spill
                             self.spill_previous_if_necessary(&batch)?;
 
