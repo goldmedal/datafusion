@@ -46,7 +46,9 @@ use datafusion_execution::memory_pool::{MemoryConsumer, MemoryReservation};
 use datafusion_execution::TaskContext;
 use datafusion_expr::{EmitTo, GroupsAccumulator};
 use datafusion_physical_expr::expressions::Column;
-use datafusion_physical_expr::{GroupsAccumulatorAdapter, PhysicalSortExpr};
+use datafusion_physical_expr::{
+    GroupsAccumulatorAdapter, Partitioning, PhysicalSortExpr,
+};
 
 use super::order::GroupOrdering;
 use super::AggregateExec;
@@ -433,6 +435,8 @@ pub(crate) struct GroupedHashAggregateStream {
 
     /// Execution metrics
     baseline_metrics: BaselineMetrics,
+
+    selection_vector_partitioning: bool,
 }
 
 impl GroupedHashAggregateStream {
@@ -597,6 +601,11 @@ impl GroupedHashAggregateStream {
             None
         };
 
+        let selection_vector_partitioning = matches!(
+            agg.cache.partitioning,
+            Partitioning::HashSelectionVector(_, _)
+        );
+
         Ok(GroupedHashAggregateStream {
             schema: agg_schema,
             input,
@@ -616,6 +625,7 @@ impl GroupedHashAggregateStream {
             spill_state,
             group_values_soft_limit: agg.limit,
             skip_aggregation_probe,
+            selection_vector_partitioning,
         })
     }
 }
@@ -698,6 +708,7 @@ impl Stream for GroupedHashAggregateStream {
                         Some(Ok(batch)) => {
                             let timer = elapsed_compute.timer();
 
+                            let batch = self.filter_by_selection_vector(batch)?;
 
                             // Make sure we have enough capacity for `batch`, otherwise spill
                             self.spill_previous_if_necessary(&batch)?;
