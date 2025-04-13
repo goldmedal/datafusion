@@ -932,9 +932,9 @@ impl protobuf::PhysicalPlanNode {
         let agg_mode: AggregateMode = match mode {
             protobuf::AggregateMode::Partial => AggregateMode::Partial,
             protobuf::AggregateMode::Final => AggregateMode::Final,
-            protobuf::AggregateMode::FinalPartitioned => AggregateMode::FinalPartitioned(
-                            HashPartitionMode::HashPartitioned,
-                        ),
+            protobuf::AggregateMode::FinalPartitioned => {
+                AggregateMode::FinalPartitioned(HashPartitionMode::HashPartitioned)
+            }
             protobuf::AggregateMode::Single => AggregateMode::Single,
             protobuf::AggregateMode::SinglePartitioned => {
                 AggregateMode::SinglePartitioned
@@ -2149,7 +2149,9 @@ impl protobuf::PhysicalPlanNode {
         let agg_mode = match exec.mode() {
             AggregateMode::Partial => protobuf::AggregateMode::Partial,
             AggregateMode::Final => protobuf::AggregateMode::Final,
-            AggregateMode::FinalPartitioned(_) => protobuf::AggregateMode::FinalPartitioned,
+            AggregateMode::FinalPartitioned(_) => {
+                protobuf::AggregateMode::FinalPartitioned
+            }
             AggregateMode::Single => protobuf::AggregateMode::Single,
             AggregateMode::SinglePartitioned => {
                 protobuf::AggregateMode::SinglePartitioned
