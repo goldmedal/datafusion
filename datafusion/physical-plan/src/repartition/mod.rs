@@ -344,6 +344,7 @@ impl BatchPartitioner {
                     num_partitions,
                 } => {
                     let mut hash_buffer = vec![];
+                    let mut hash_buffer = vec![];
                     let timer = self.timer.timer();
                     let arrays = exprs
                         .iter()
@@ -351,6 +352,7 @@ impl BatchPartitioner {
                         .collect::<Result<Vec<_>>>()?;
 
                     hash_buffer.resize(batch.num_rows(), 0);
+                    create_hashes(&arrays, random_state, &mut hash_buffer)?;
                     create_hashes(&arrays, random_state, &mut hash_buffer)?;
 
                     let hash_vector = UInt64Array::from(hash_buffer)
