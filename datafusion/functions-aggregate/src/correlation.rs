@@ -402,6 +402,7 @@ impl GroupsAccumulator for CorrelationGroupsAccumulator {
         group_indices: &[usize],
         opt_filter: Option<&BooleanArray>,
         total_num_groups: usize,
+        _sv: Option<&[usize]>,
     ) -> Result<()> {
         // Resize vectors to accommodate total number of groups
         self.count.resize(total_num_groups, 0);

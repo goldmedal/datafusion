@@ -16,11 +16,11 @@
 // under the License.
 
 use crate::aggregates::group_values::GroupValues;
-use arrow::array::{Array, ArrayRef, RecordBatch};
+use arrow::array::{Array, ArrayRef, RecordBatch, StringViewArray, UInt64Array};
 use datafusion_expr::EmitTo;
 use datafusion_physical_expr::binary_map::OutputType;
 use datafusion_physical_expr_common::binary_view_map::ArrowBytesViewMap;
-use std::mem::size_of;
+use std::{mem::size_of, sync::Arc};
 
 /// A [`GroupValues`] storing single column of Utf8View/BinaryView values
 ///
@@ -47,30 +47,49 @@ impl GroupValues for GroupValuesBytesView {
         &mut self,
         cols: &[ArrayRef],
         groups: &mut Vec<usize>,
+        sv: Option<&[usize]>,
     ) -> datafusion_common::Result<()> {
         assert_eq!(cols.len(), 1);
-
         // look up / add entries in the table
-        let arr = &cols[0];
-
         groups.clear();
-        self.map.insert_if_new(
-            arr,
-            // called for each new group
-            |_value| {
-                // assign new group index on each insert
-                let group_idx = self.num_groups;
-                self.num_groups += 1;
-                group_idx
-            },
-            // called for each group
-            |group_idx| {
-                groups.push(group_idx);
-            },
-        );
+        if let Some(sv) = sv {
+            let arr: ArrayRef = Arc::new(StringViewArray::new_null(sv.len()));
+            self.map.insert_if_new(
+                &arr,
+                // called for each new group
+                |_value| {
+                    // assign new group index on each insert
+                    let group_idx = self.num_groups;
+                    self.num_groups += 1;
+                    group_idx
+                },
+                // called for each group
+                |group_idx| {
+                    groups.push(group_idx);
+                },
+            );
+            assert_eq!(groups.len(), arr.len());
+        }
+        else {
+            let arr = &cols[0];
+            self.map.insert_if_new(
+                arr,
+                // called for each new group
+                |_value| {
+                    // assign new group index on each insert
+                    let group_idx = self.num_groups;
+                    self.num_groups += 1;
+                    group_idx
+                },
+                // called for each group
+                |group_idx| {
+                    groups.push(group_idx);
+                },
+            );
+            assert_eq!(groups.len(), arr.len());
+        }
 
         // ensure we assigned a group to for each row
-        assert_eq!(groups.len(), arr.len());
         Ok(())
     }
 
@@ -110,7 +129,7 @@ impl GroupValues for GroupValuesBytesView {
 
                 self.num_groups = 0;
                 let mut group_indexes = vec![];
-                self.intern(&[remaining_group_values], &mut group_indexes)?;
+                self.intern(&[remaining_group_values], &mut group_indexes, None)?;
 
                 // Verify that the group indexes were assigned in the correct order
                 assert_eq!(0, group_indexes[0]);

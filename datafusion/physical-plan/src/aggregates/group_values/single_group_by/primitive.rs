@@ -18,6 +18,7 @@
 use crate::aggregates::group_values::GroupValues;
 use ahash::RandomState;
 use arrow::array::types::{IntervalDayTime, IntervalMonthDayNano};
+use arrow::array::Array;
 use arrow::array::{
     cast::AsArray, ArrayRef, ArrowNativeTypeOp, ArrowPrimitiveType, NullBufferBuilder,
     PrimitiveArray,
@@ -111,39 +112,77 @@ impl<T: ArrowPrimitiveType> GroupValues for GroupValuesPrimitive<T>
 where
     T::Native: HashValue,
 {
-    fn intern(&mut self, cols: &[ArrayRef], groups: &mut Vec<usize>) -> Result<()> {
+    fn intern(&mut self, cols: &[ArrayRef], groups: &mut Vec<usize>, sv: Option<&[usize]>) -> Result<()> {
         assert_eq!(cols.len(), 1);
         groups.clear();
-
-        for v in cols[0].as_primitive::<T>() {
-            let group_id = match v {
-                None => *self.null_group.get_or_insert_with(|| {
-                    let group_id = self.values.len();
-                    self.values.push(Default::default());
-                    group_id
-                }),
-                Some(key) => {
-                    let state = &self.random_state;
-                    let hash = key.hash(state);
-                    let insert = self.map.entry(
-                        hash,
-                        |g| unsafe { self.values.get_unchecked(*g).is_eq(key) },
-                        |g| unsafe { self.values.get_unchecked(*g).hash(state) },
-                    );
-
-                    match insert {
-                        hashbrown::hash_table::Entry::Occupied(o) => *o.get(),
-                        hashbrown::hash_table::Entry::Vacant(v) => {
-                            let g = self.values.len();
-                            v.insert(g);
-                            self.values.push(key);
-                            g
+        if let Some(sv) = sv {
+            for idx in sv {
+                let v = if cols[0].as_primitive::<T>().is_null(*idx) {
+                    None
+                } else {
+                    Some(cols[0].as_primitive::<T>().value(*idx))
+                };
+                let group_id = match v {
+                    None => *self.null_group.get_or_insert_with(|| {
+                        let group_id = self.values.len();
+                        self.values.push(Default::default());
+                        group_id
+                    }),
+                    Some(key) => {
+                        let state = &self.random_state;
+                        let hash = key.hash(state);
+                        let insert = self.map.entry(
+                            hash,
+                            |g| unsafe { self.values.get_unchecked(*g).is_eq(key) },
+                            |g| unsafe { self.values.get_unchecked(*g).hash(state) },
+                        );
+    
+                        match insert {
+                            hashbrown::hash_table::Entry::Occupied(o) => *o.get(),
+                            hashbrown::hash_table::Entry::Vacant(v) => {
+                                let g = self.values.len();
+                                v.insert(g);
+                                self.values.push(key);
+                                g
+                            }
                         }
                     }
-                }
-            };
-            groups.push(group_id)
+                };
+                groups.push(group_id)
+            }
         }
+        else {
+            for v in cols[0].as_primitive::<T>() {
+                let group_id = match v {
+                    None => *self.null_group.get_or_insert_with(|| {
+                        let group_id = self.values.len();
+                        self.values.push(Default::default());
+                        group_id
+                    }),
+                    Some(key) => {
+                        let state = &self.random_state;
+                        let hash = key.hash(state);
+                        let insert = self.map.entry(
+                            hash,
+                            |g| unsafe { self.values.get_unchecked(*g).is_eq(key) },
+                            |g| unsafe { self.values.get_unchecked(*g).hash(state) },
+                        );
+    
+                        match insert {
+                            hashbrown::hash_table::Entry::Occupied(o) => *o.get(),
+                            hashbrown::hash_table::Entry::Vacant(v) => {
+                                let g = self.values.len();
+                                v.insert(g);
+                                self.values.push(key);
+                                g
+                            }
+                        }
+                    }
+                };
+                groups.push(group_id)
+            }
+        }
+
         Ok(())
     }
 

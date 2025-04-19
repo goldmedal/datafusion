@@ -655,6 +655,7 @@ where
         group_indices: &[usize],
         opt_filter: Option<&BooleanArray>,
         total_num_groups: usize,
+        _sv: Option<&[usize]>,
     ) -> Result<()> {
         assert_eq!(values.len(), 2, "two arguments to merge_batch");
         // first batch is counts, second is partial sums

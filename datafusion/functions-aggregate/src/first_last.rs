@@ -712,6 +712,7 @@ where
         group_indices: &[usize],
         opt_filter: Option<&BooleanArray>,
         total_num_groups: usize,
+        _sv: Option<&[usize]>,
     ) -> Result<()> {
         self.resize_states(total_num_groups);
 
@@ -1588,6 +1589,7 @@ mod tests {
             &[0, 1, 2],
             Some(&BooleanArray::from(vec![true, false, false])),
             3,
+            None,
         )?;
 
         assert_eq!(
@@ -1676,7 +1678,7 @@ mod tests {
                 group_acc.compute_size_of_orderings()
             );
 
-            group_acc.merge_batch(&s, &Vec::from_iter(0..s[0].len()), None, 100)?;
+            group_acc.merge_batch(&s, &Vec::from_iter(0..s[0].len()), None, 100, None)?;
             assert_eq!(
                 group_acc.size_of_orderings,
                 group_acc.compute_size_of_orderings()
@@ -1754,6 +1756,7 @@ mod tests {
             &[0, 1, 2],
             Some(&BooleanArray::from(vec![true, false, false])),
             3,
+            None,
         )?;
 
         val_with_orderings.clear();
