@@ -113,12 +113,17 @@ impl NullState {
         let seen_values =
             initialize_builder(&mut self.seen_values, total_num_groups, false);
         if let Some(sv) = sv {
-            accumulate_with_sv(group_indices, values, opt_filter, sv, |group_index, value| {
-                seen_values.set_bit(group_index, true);
-                value_fn(group_index, value);
-            });
-        }
-        else {
+            accumulate_with_sv(
+                group_indices,
+                values,
+                opt_filter,
+                sv,
+                |group_index, value| {
+                    seen_values.set_bit(group_index, true);
+                    value_fn(group_index, value);
+                },
+            );
+        } else {
             accumulate(group_indices, values, opt_filter, |group_index, value| {
                 seen_values.set_bit(group_index, true);
                 value_fn(group_index, value);

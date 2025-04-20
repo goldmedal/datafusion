@@ -533,8 +533,7 @@ impl GroupsAccumulator for CountGroupsAccumulator {
                 let group_index = group_indices[idx];
                 self.counts[group_index] += partial_counts[*row_idx];
             }
-        }
-        else {
+        } else {
             group_indices.iter().zip(partial_counts.iter()).for_each(
                 |(&group_index, partial_count)| {
                     self.counts[group_index] += partial_count;

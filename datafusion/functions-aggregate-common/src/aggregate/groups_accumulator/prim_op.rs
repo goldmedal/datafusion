@@ -138,10 +138,10 @@ where
         if sv.is_some() {
             assert_eq!(values.len(), 1, "single argument to update_batch");
             let values = values[0].as_primitive::<T>();
-    
+
             // update values
             self.values.resize(total_num_groups, self.starting_value);
-    
+
             // NullState dispatches / handles tracking nulls and groups that saw no values
             self.null_state.accumulate(
                 group_indices,
@@ -154,8 +154,7 @@ where
                     (self.prim_fn)(value, new_value);
                 },
             );
-        }
-        else {
+        } else {
             // update / merge are the same
             self.update_batch(values, group_indices, opt_filter, total_num_groups)?;
         }

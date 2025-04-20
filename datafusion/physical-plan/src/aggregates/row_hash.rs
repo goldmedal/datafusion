@@ -47,7 +47,7 @@ use datafusion_execution::TaskContext;
 use datafusion_expr::{EmitTo, GroupsAccumulator};
 use datafusion_physical_expr::expressions::Column;
 use datafusion_physical_expr::{
-    GroupsAccumulatorAdapter, Partitioning, PhysicalSortExpr,
+    GroupsAccumulatorAdapter, PhysicalSortExpr,
 };
 
 use super::order::GroupOrdering;
@@ -435,8 +435,6 @@ pub(crate) struct GroupedHashAggregateStream {
 
     /// Execution metrics
     baseline_metrics: BaselineMetrics,
-
-    selection_vector_partitioning: bool,
 }
 
 impl GroupedHashAggregateStream {
@@ -601,11 +599,6 @@ impl GroupedHashAggregateStream {
             None
         };
 
-        let selection_vector_partitioning = matches!(
-            agg.cache.partitioning,
-            Partitioning::HashSelectionVector(_, _)
-        );
-
         Ok(GroupedHashAggregateStream {
             schema: agg_schema,
             input,
@@ -625,7 +618,6 @@ impl GroupedHashAggregateStream {
             spill_state,
             group_values_soft_limit: agg.limit,
             skip_aggregation_probe,
-            selection_vector_partitioning,
         })
     }
 }
@@ -835,13 +827,13 @@ impl GroupedHashAggregateStream {
     /// Perform group-by aggregation for the given [`RecordBatch`].
     fn group_aggregate_batch(&mut self, batch: RecordBatch) -> Result<()> {
         let mut sv_mode = false;
-        let selection: Vec<usize> = if let Some(array) = batch.column_by_name(SELECTION_FIELD_NAME) {
-            sv_mode = true;
-            array.as_boolean().values().set_indices().collect()
-        }
-        else {
-            vec![]
-        };
+        let selection: Vec<usize> =
+            if let Some(array) = batch.column_by_name(SELECTION_FIELD_NAME) {
+                sv_mode = true;
+                array.as_boolean().values().set_indices().collect()
+            } else {
+                vec![]
+            };
 
         // Evaluate the grouping expressions
         let group_by_values = if self.spill_state.is_stream_merging {
@@ -873,8 +865,11 @@ impl GroupedHashAggregateStream {
             };
             // calculate the group indices for each input row
             let starting_num_groups = self.group_values.len();
-            self.group_values
-                .intern(group_values, &mut self.current_group_indices, sv_opt)?;
+            self.group_values.intern(
+                group_values,
+                &mut self.current_group_indices,
+                sv_opt,
+            )?;
             let group_indices = &self.current_group_indices;
 
             // Update ordering information if necessary
@@ -924,7 +919,13 @@ impl GroupedHashAggregateStream {
                         };
                         // if aggregation is over intermediate states,
                         // use merge
-                        acc.merge_batch(values, group_indices, None, total_num_groups, sv_opt)?;
+                        acc.merge_batch(
+                            values,
+                            group_indices,
+                            None,
+                            total_num_groups,
+                            sv_opt,
+                        )?;
                     }
                 }
             }

@@ -16,7 +16,7 @@
 // under the License.
 
 use crate::aggregates::group_values::GroupValues;
-use arrow::array::{Array, ArrayRef, RecordBatch, StringViewArray, UInt64Array};
+use arrow::array::{Array, ArrayRef, RecordBatch, StringViewArray};
 use datafusion_expr::EmitTo;
 use datafusion_physical_expr::binary_map::OutputType;
 use datafusion_physical_expr_common::binary_view_map::ArrowBytesViewMap;
@@ -69,8 +69,7 @@ impl GroupValues for GroupValuesBytesView {
                 },
             );
             assert_eq!(groups.len(), arr.len());
-        }
-        else {
+        } else {
             let arr = &cols[0];
             self.map.insert_if_new(
                 arr,

@@ -112,7 +112,12 @@ impl<T: ArrowPrimitiveType> GroupValues for GroupValuesPrimitive<T>
 where
     T::Native: HashValue,
 {
-    fn intern(&mut self, cols: &[ArrayRef], groups: &mut Vec<usize>, sv: Option<&[usize]>) -> Result<()> {
+    fn intern(
+        &mut self,
+        cols: &[ArrayRef],
+        groups: &mut Vec<usize>,
+        sv: Option<&[usize]>,
+    ) -> Result<()> {
         assert_eq!(cols.len(), 1);
         groups.clear();
         if let Some(sv) = sv {
@@ -136,7 +141,7 @@ where
                             |g| unsafe { self.values.get_unchecked(*g).is_eq(key) },
                             |g| unsafe { self.values.get_unchecked(*g).hash(state) },
                         );
-    
+
                         match insert {
                             hashbrown::hash_table::Entry::Occupied(o) => *o.get(),
                             hashbrown::hash_table::Entry::Vacant(v) => {
@@ -150,8 +155,7 @@ where
                 };
                 groups.push(group_id)
             }
-        }
-        else {
+        } else {
             for v in cols[0].as_primitive::<T>() {
                 let group_id = match v {
                     None => *self.null_group.get_or_insert_with(|| {
@@ -167,7 +171,7 @@ where
                             |g| unsafe { self.values.get_unchecked(*g).is_eq(key) },
                             |g| unsafe { self.values.get_unchecked(*g).hash(state) },
                         );
-    
+
                         match insert {
                             hashbrown::hash_table::Entry::Occupied(o) => *o.get(),
                             hashbrown::hash_table::Entry::Vacant(v) => {

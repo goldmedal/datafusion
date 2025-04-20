@@ -891,7 +891,12 @@ macro_rules! instantiate_primitive {
 }
 
 impl<const STREAMING: bool> GroupValues for GroupValuesColumn<STREAMING> {
-    fn intern(&mut self, cols: &[ArrayRef], groups: &mut Vec<usize>, _sv: Option<&[usize]>) -> Result<()> {
+    fn intern(
+        &mut self,
+        cols: &[ArrayRef],
+        groups: &mut Vec<usize>,
+        _sv: Option<&[usize]>,
+    ) -> Result<()> {
         if self.group_values.is_empty() {
             let mut v = Vec::with_capacity(cols.len());
 
@@ -1723,7 +1728,7 @@ mod tests {
 
         fn load_to_group_values(&self, group_values: &mut impl GroupValues) {
             for batch in self.test_batches.iter() {
-                group_values.intern(batch, &mut vec![]).unwrap();
+                group_values.intern(batch, &mut vec![], None).unwrap();
             }
         }
 
