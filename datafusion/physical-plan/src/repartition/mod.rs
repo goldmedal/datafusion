@@ -352,7 +352,6 @@ impl BatchPartitioner {
 
                     hash_buffer.resize(batch.num_rows(), 0);
                     create_hashes(&arrays, random_state, &mut hash_buffer)?;
-                    create_hashes(&arrays, random_state, &mut hash_buffer)?;
 
                     let hash_vector = UInt64Array::from(hash_buffer)
                         .unary_mut(|a| a % *num_partitions as u64)
