@@ -46,9 +46,7 @@ use datafusion_execution::memory_pool::{MemoryConsumer, MemoryReservation};
 use datafusion_execution::TaskContext;
 use datafusion_expr::{EmitTo, GroupsAccumulator};
 use datafusion_physical_expr::expressions::Column;
-use datafusion_physical_expr::{
-    GroupsAccumulatorAdapter, PhysicalSortExpr,
-};
+use datafusion_physical_expr::{GroupsAccumulatorAdapter, PhysicalSortExpr};
 
 use super::order::GroupOrdering;
 use super::AggregateExec;
