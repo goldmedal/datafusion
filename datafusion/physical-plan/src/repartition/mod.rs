@@ -344,7 +344,6 @@ impl BatchPartitioner {
                     num_partitions,
                 } => {
                     let mut hash_buffer = vec![];
-                    let mut hash_buffer = vec![];
                     let timer = self.timer.timer();
                     let arrays = exprs
                         .iter()
