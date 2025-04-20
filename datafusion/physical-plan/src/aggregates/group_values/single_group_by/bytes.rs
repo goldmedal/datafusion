@@ -49,7 +49,6 @@ impl<O: OffsetSizeTrait> GroupValues for GroupValuesByes<O> {
         _sv: Option<&[usize]>,
     ) -> datafusion_common::Result<()> {
         assert_eq!(cols.len(), 1);
-        dbg!("bytes");
         // look up / add entries in the table
         let arr = &cols[0];
 

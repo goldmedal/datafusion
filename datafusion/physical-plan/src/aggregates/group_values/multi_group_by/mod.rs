@@ -892,7 +892,6 @@ macro_rules! instantiate_primitive {
 
 impl<const STREAMING: bool> GroupValues for GroupValuesColumn<STREAMING> {
     fn intern(&mut self, cols: &[ArrayRef], groups: &mut Vec<usize>, _sv: Option<&[usize]>) -> Result<()> {
-        dbg!("mod");
         if self.group_values.is_empty() {
             let mut v = Vec::with_capacity(cols.len());
 
