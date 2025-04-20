@@ -584,6 +584,7 @@ where
             values,
             opt_filter,
             total_num_groups,
+            None,
             |group_index, new_value| {
                 let sum = &mut self.sums[group_index];
                 *sum = sum.add_wrapping(new_value);
@@ -668,6 +669,7 @@ where
             partial_counts,
             opt_filter,
             total_num_groups,
+            None,
             |group_index, partial_count| {
                 self.counts[group_index] += partial_count;
             },
@@ -680,6 +682,7 @@ where
             partial_sums,
             opt_filter,
             total_num_groups,
+            None,
             |group_index, new_value: <T as ArrowPrimitiveType>::Native| {
                 let sum = &mut self.sums[group_index];
                 *sum = sum.add_wrapping(new_value);

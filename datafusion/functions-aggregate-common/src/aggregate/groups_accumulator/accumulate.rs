@@ -102,6 +102,7 @@ impl NullState {
         values: &PrimitiveArray<T>,
         opt_filter: Option<&BooleanArray>,
         total_num_groups: usize,
+        sv: Option<&[usize]>,
         mut value_fn: F,
     ) where
         T: ArrowPrimitiveType + Send,
@@ -111,10 +112,18 @@ impl NullState {
         // "not seen" valid)
         let seen_values =
             initialize_builder(&mut self.seen_values, total_num_groups, false);
-        accumulate(group_indices, values, opt_filter, |group_index, value| {
-            seen_values.set_bit(group_index, true);
-            value_fn(group_index, value);
-        });
+        if let Some(sv) = sv {
+            accumulate_with_sv(group_indices, values, opt_filter, sv, |group_index, value| {
+                seen_values.set_bit(group_index, true);
+                value_fn(group_index, value);
+            });
+        }
+        else {
+            accumulate(group_indices, values, opt_filter, |group_index, value| {
+                seen_values.set_bit(group_index, true);
+                value_fn(group_index, value);
+            });
+        }
     }
 
     /// Invokes `value_fn(group_index, value)` for each non null, non
@@ -368,6 +377,23 @@ pub fn accumulate<T, F>(
                     }
                 })
         }
+    }
+}
+
+pub fn accumulate_with_sv<T, F>(
+    group_indices: &[usize],
+    values: &PrimitiveArray<T>,
+    _opt_filter: Option<&BooleanArray>,
+    sv: &[usize],
+    mut value_fn: F,
+) where
+    T: ArrowPrimitiveType + Send,
+    F: FnMut(usize, T::Native) + Send,
+{
+    for (idx, row_idx) in sv.iter().enumerate() {
+        let group_index = group_indices[idx];
+        let new_value = values.value(*row_idx);
+        value_fn(group_index, new_value);
     }
 }
 
@@ -804,6 +830,7 @@ mod test {
                 values,
                 opt_filter,
                 total_num_groups,
+                None,
                 |group_index, value| {
                     accumulated_values.push((group_index, value));
                 },

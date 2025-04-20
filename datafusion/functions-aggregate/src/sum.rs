@@ -175,6 +175,8 @@ impl AggregateUDFImpl for Sum {
 
     fn accumulator(&self, args: AccumulatorArgs) -> Result<Box<dyn Accumulator>> {
         if args.is_distinct {
+            dbg!("create_dist_accumulator");
+
             macro_rules! helper {
                 ($t:ty, $dt:expr) => {
                     Ok(Box::new(DistinctSumAccumulator::<$t>::try_new(&$dt)?))
