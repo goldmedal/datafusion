@@ -16,6 +16,7 @@
 // under the License.
 
 use arrow::datatypes::{Field, Schema};
+use arrow::util::bit_iterator::BitIndexIterator;
 use datafusion::physical_expr::NullState;
 use datafusion::{arrow::datatypes::DataType, logical_expr::Volatility};
 use std::{any::Any, sync::Arc};
@@ -272,7 +273,7 @@ impl GroupsAccumulator for GeometricMeanGroupsAccumulator {
         group_indices: &[usize],
         opt_filter: Option<&arrow::array::BooleanArray>,
         total_num_groups: usize,
-        sv: Option<&[usize]>,
+        _sv: Option<BitIndexIterator>,
     ) -> Result<()> {
         assert_eq!(values.len(), 2, "two arguments to merge_batch");
         // first batch is counts, second is partial sums
