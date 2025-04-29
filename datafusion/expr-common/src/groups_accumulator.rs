@@ -193,6 +193,7 @@ pub trait GroupsAccumulator: Send {
         group_indices: &[usize],
         opt_filter: Option<&BooleanArray>,
         total_num_groups: usize,
+        sv: Option<&[usize]>,
     ) -> Result<()>;
 
     /// Converts an input batch directly to the intermediate aggregate state.

@@ -515,6 +515,7 @@ impl GroupsAccumulator for VarianceGroupsAccumulator {
         // Since aggregate filter should be applied in partial stage, in final stage there should be no filter
         _opt_filter: Option<&BooleanArray>,
         total_num_groups: usize,
+        _sv: Option<&[usize]>,
     ) -> Result<()> {
         assert_eq!(values.len(), 3, "two arguments to merge_batch");
         // first batch is counts, second is partial means, third is partial m2s
@@ -592,8 +593,8 @@ mod tests {
             Arc::new(Float64Array::from(vec![1.0])),
         ];
         let mut acc = VarianceGroupsAccumulator::new(StatsType::Sample);
-        acc.merge_batch(&state_1, &[0], None, 1)?;
-        acc.merge_batch(&state_2, &[0], None, 1)?;
+        acc.merge_batch(&state_1, &[0], None, 1, None)?;
+        acc.merge_batch(&state_2, &[0], None, 1, None)?;
         let result = acc.evaluate(EmitTo::All)?;
         let result = result.as_any().downcast_ref::<Float64Array>().unwrap();
         assert_eq!(result.len(), 1);
