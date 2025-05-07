@@ -105,6 +105,7 @@ where
             values,
             opt_filter,
             total_num_groups,
+            None,
             |group_index, new_value| {
                 let value = &mut self.values[group_index];
                 (self.prim_fn)(value, new_value);
@@ -132,9 +133,32 @@ where
         group_indices: &[usize],
         opt_filter: Option<&BooleanArray>,
         total_num_groups: usize,
+        sv: Option<&[usize]>,
     ) -> Result<()> {
-        // update / merge are the same
-        self.update_batch(values, group_indices, opt_filter, total_num_groups)
+        if sv.is_some() {
+            assert_eq!(values.len(), 1, "single argument to update_batch");
+            let values = values[0].as_primitive::<T>();
+
+            // update values
+            self.values.resize(total_num_groups, self.starting_value);
+
+            // NullState dispatches / handles tracking nulls and groups that saw no values
+            self.null_state.accumulate(
+                group_indices,
+                values,
+                opt_filter,
+                total_num_groups,
+                sv,
+                |group_index, new_value| {
+                    let value = &mut self.values[group_index];
+                    (self.prim_fn)(value, new_value);
+                },
+            );
+        } else {
+            // update / merge are the same
+            self.update_batch(values, group_indices, opt_filter, total_num_groups)?;
+        }
+        Ok(())
     }
 
     /// Converts an input batch directly to a state batch

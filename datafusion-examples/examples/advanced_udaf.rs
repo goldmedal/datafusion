@@ -254,6 +254,7 @@ impl GroupsAccumulator for GeometricMeanGroupsAccumulator {
             values,
             opt_filter,
             total_num_groups,
+            None,
             |group_index, new_value| {
                 let prod = &mut self.prods[group_index];
                 *prod = prod.mul_wrapping(new_value);
@@ -272,6 +273,7 @@ impl GroupsAccumulator for GeometricMeanGroupsAccumulator {
         group_indices: &[usize],
         opt_filter: Option<&arrow::array::BooleanArray>,
         total_num_groups: usize,
+        _sv: Option<&[usize]>,
     ) -> Result<()> {
         assert_eq!(values.len(), 2, "two arguments to merge_batch");
         // first batch is counts, second is partial sums
@@ -284,6 +286,7 @@ impl GroupsAccumulator for GeometricMeanGroupsAccumulator {
             partial_counts,
             opt_filter,
             total_num_groups,
+            None,
             |group_index, partial_count| {
                 self.counts[group_index] += partial_count;
             },
@@ -296,6 +299,7 @@ impl GroupsAccumulator for GeometricMeanGroupsAccumulator {
             partial_prods,
             opt_filter,
             total_num_groups,
+            None,
             |group_index, new_value: <Float64Type as ArrowPrimitiveType>::Native| {
                 let prod = &mut self.prods[group_index];
                 *prod = prod.mul_wrapping(new_value);
