@@ -28,6 +28,7 @@ use crate::aggregates::{
     PhysicalGroupBy,
 };
 use crate::metrics::{BaselineMetrics, MetricBuilder, RecordOutput};
+use crate::repartition::SELECTION_FIELD_NAME;
 use crate::sorts::sort::sort_batch;
 use crate::sorts::streaming_merge::StreamingMergeBuilder;
 use crate::spill::spill_manager::SpillManager;
@@ -823,6 +824,15 @@ impl RecordBatchStream for GroupedHashAggregateStream {
 impl GroupedHashAggregateStream {
     /// Perform group-by aggregation for the given [`RecordBatch`].
     fn group_aggregate_batch(&mut self, batch: RecordBatch) -> Result<()> {
+        let mut sv_mode = false;
+        let selection: Vec<usize> =
+            if let Some(array) = batch.column_by_name(SELECTION_FIELD_NAME) {
+                sv_mode = true;
+                array.as_boolean().values().set_indices().collect()
+            } else {
+                vec![]
+            };
+
         // Evaluate the grouping expressions
         let group_by_values = if self.spill_state.is_stream_merging {
             evaluate_group_by(&self.spill_state.merging_group_by, &batch)?
@@ -846,10 +856,18 @@ impl GroupedHashAggregateStream {
         };
 
         for group_values in &group_by_values {
+            let sv_opt = if sv_mode {
+                Some(selection.as_slice())
+            } else {
+                None
+            };
             // calculate the group indices for each input row
             let starting_num_groups = self.group_values.len();
-            self.group_values
-                .intern(group_values, &mut self.current_group_indices)?;
+            self.group_values.intern(
+                group_values,
+                &mut self.current_group_indices,
+                sv_opt,
+            )?;
             let group_indices = &self.current_group_indices;
 
             // Update ordering information if necessary
@@ -892,9 +910,20 @@ impl GroupedHashAggregateStream {
                             return internal_err!("aggregate filter should be applied in partial stage, there should be no filter in final stage");
                         }
 
+                        let sv_opt = if sv_mode {
+                            Some(selection.as_slice())
+                        } else {
+                            None
+                        };
                         // if aggregation is over intermediate states,
                         // use merge
-                        acc.merge_batch(values, group_indices, None, total_num_groups)?;
+                        acc.merge_batch(
+                            values,
+                            group_indices,
+                            None,
+                            total_num_groups,
+                            sv_opt,
+                        )?;
                     }
                 }
             }

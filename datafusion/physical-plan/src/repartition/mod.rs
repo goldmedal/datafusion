@@ -378,9 +378,11 @@ impl BatchPartitioner {
                     let it = (0..*num_partitions).map(move |partition| {
                         // Tracking time required for repartitioned batches construction
                         let _timer = partitioner_timer.timer();
-                        let partition_scalar = UInt64Array::new_scalar(partition as u64);
-                        let selection_array =
-                            arrow_ord::cmp::eq(&hash_vector, &partition_scalar).unwrap();
+                        let selection_array = arrow_ord::cmp::eq(
+                            &hash_vector,
+                            &UInt64Array::from(vec![partition as u64; batch.num_rows()]),
+                        )
+                        .unwrap();
                         let selection_bitmap = Arc::new(selection_array);
                         let mut columns = batch.columns().to_vec();
                         columns.push(selection_bitmap);
