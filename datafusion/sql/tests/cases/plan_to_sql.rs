@@ -313,7 +313,7 @@ fn roundtrip_statement_with_dialect() -> Result<()> {
         TestStatementWithDialect {
             sql: "select min(ta.j1_id) as j1_min, max(tb.j1_max) from j1 ta, (select distinct max(ta.j1_id) as j1_max from j1 ta order by max(ta.j1_id)) tb order by min(ta.j1_id) limit 10;",
             expected:
-                "SELECT `j1_min`, `max(tb.j1_max)` FROM (SELECT min(`ta`.`j1_id`) AS `j1_min`, max(`tb`.`j1_max`), min(`ta`.`j1_id`) FROM `j1` AS `ta` CROSS JOIN (SELECT `j1_max` FROM (SELECT DISTINCT max(`ta`.`j1_id`) AS `j1_max` FROM `j1` AS `ta`) AS `derived_distinct`) AS `tb` ORDER BY min(`ta`.`j1_id`) ASC) AS `derived_sort` LIMIT 10",
+                "SELECT `j1_min`, `max(tb.j1_max)` FROM (SELECT min(`ta`.`j1_id`) AS `j1_min`, max(`tb`.`j1_max`), min(`ta`.`j1_id`) FROM `j1` AS `ta` CROSS JOIN (SELECT `j1_max` FROM (SELECT DISTINCT max(`ta`.`j1_id`) AS `j1_max` FROM `j1` AS `ta` ORDER BY max(`ta`.`j1_id`) ASC) AS `derived_sort`) AS `tb` ORDER BY min(`ta`.`j1_id`) ASC) AS `derived_sort` LIMIT 10",
             parser_dialect: Box::new(MySqlDialect {}),
             unparser_dialect: Box::new(UnparserMySqlDialect {}),
         },
@@ -1710,5 +1710,28 @@ fn test_unparse_optimized_multi_union() -> Result<()> {
         panic!("Expected error")
     }
 
+    Ok(())
+}
+
+#[test]
+fn test_unparse_nested_sort() -> Result<()> {
+    let schema = Schema::new(vec![
+        Field::new("id", DataType::Utf8, false),
+        Field::new("age", DataType::Utf8, false),
+    ]);
+
+    let table_scan = table_scan(Some("t1"), &schema, None)?;
+    let plan = table_scan
+        .project(vec![col("id"), col("age")])?
+        .sort_by(vec![col("age")])?
+        .project(vec![col("id")])?
+        .sort_by(vec![col("id")])?
+        .limit(0, Some(10))?
+        .build()?;
+    let sql = plan_to_sql(&plan)?;
+    assert_eq!(
+        sql.to_string(),
+        "SELECT t1.id FROM t1 ORDER BY t1.id ASC NULLS LAST LIMIT 10"
+    );
     Ok(())
 }
