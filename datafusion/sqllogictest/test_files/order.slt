@@ -1251,11 +1251,13 @@ logical_plan
 01)Sort: d ASC NULLS LAST, c ASC NULLS LAST, a ASC NULLS LAST, a0 ASC NULLS LAST, b ASC NULLS LAST, fetch=2
 02)--Union
 03)----SubqueryAlias: t1
-04)------Projection: ordered_table.b, ordered_table.c, ordered_table.a, Int32(NULL) AS a0, ordered_table.d
-05)--------TableScan: ordered_table projection=[a, b, c, d]
-06)----SubqueryAlias: t2
-07)------Projection: ordered_table.b, ordered_table.c, Int32(NULL) AS a, ordered_table.a0, ordered_table.d
-08)--------TableScan: ordered_table projection=[a0, b, c, d]
+04)------Sort: ordered_table.a ASC NULLS LAST, ordered_table.c ASC NULLS LAST
+05)--------Projection: ordered_table.b, ordered_table.c, ordered_table.a, Int32(NULL) AS a0, ordered_table.d
+06)----------TableScan: ordered_table projection=[a, b, c, d]
+07)----SubqueryAlias: t2
+08)------Sort: ordered_table.a0 ASC NULLS LAST, ordered_table.c ASC NULLS LAST
+09)--------Projection: ordered_table.b, ordered_table.c, Int32(NULL) AS a, ordered_table.a0, ordered_table.d
+10)----------TableScan: ordered_table projection=[a0, b, c, d]
 physical_plan
 01)SortPreservingMergeExec: [d@4 ASC NULLS LAST, c@1 ASC NULLS LAST, a@2 ASC NULLS LAST, a0@3 ASC NULLS LAST, b@0 ASC NULLS LAST], fetch=2
 02)--UnionExec

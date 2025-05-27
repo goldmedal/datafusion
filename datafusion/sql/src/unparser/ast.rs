@@ -53,6 +53,11 @@ impl QueryBuilder {
         self.order_by_kind = Some(value);
         self
     }
+
+    pub fn already_ordered(&self) -> bool {
+        self.order_by_kind.is_some()
+    }
+
     pub fn limit(&mut self, value: Option<ast::Expr>) -> &mut Self {
         self.limit = value;
         self
