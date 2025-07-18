@@ -171,6 +171,10 @@ pub enum NullOrdering {
 
 impl NullOrdering {
     /// Evaluates the null ordering based on the given ascending flag.
+    ///
+    /// # Returns
+    /// * `true` if nulls should appear first.
+    /// * `false` if nulls should appear last.
     pub fn eval(&self, asc: bool) -> bool {
         match self {
             Self::AscReverse => !asc,
