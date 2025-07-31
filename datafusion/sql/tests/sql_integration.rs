@@ -32,7 +32,7 @@ use datafusion_expr::{
 use datafusion_functions::{string, unicode};
 use datafusion_sql::{
     parser::DFParser,
-    planner::{ParserOptions, SqlToRel},
+    planner::{NullOrdering, ParserOptions, SqlToRel},
 };
 
 use crate::common::{CustomExprPlanner, CustomTypePlanner, MockSessionState};
@@ -3387,6 +3387,7 @@ fn parse_decimals_parser_options() -> ParserOptions {
         map_string_types_to_utf8view: true,
         enable_options_value_normalization: false,
         collect_spans: false,
+        default_null_ordering: NullOrdering::NullsMax,
     }
 }
 
@@ -3398,6 +3399,7 @@ fn ident_normalization_parser_options_no_ident_normalization() -> ParserOptions 
         map_string_types_to_utf8view: true,
         enable_options_value_normalization: false,
         collect_spans: false,
+        default_null_ordering: NullOrdering::NullsMax,
     }
 }
 
@@ -3409,6 +3411,7 @@ fn ident_normalization_parser_options_ident_normalization() -> ParserOptions {
         map_string_types_to_utf8view: true,
         enable_options_value_normalization: false,
         collect_spans: false,
+        default_null_ordering: NullOrdering::NullsMax,
     }
 }
 
