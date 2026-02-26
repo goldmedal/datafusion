@@ -179,6 +179,8 @@ impl<S: ContextProvider> SqlToRel<'_, S> {
         &self,
         negative: bool,
         interval: Interval,
+        schema: &DFSchema,
+        planner_context: &mut PlannerContext,
     ) -> Result<Expr> {
         if interval.leading_precision.is_some() {
             return not_impl_err!(
@@ -218,6 +220,8 @@ impl<S: ContextProvider> SqlToRel<'_, S> {
                     last_field: None,
                     fractional_seconds_precision: None,
                 },
+                schema,
+                planner_context,
             )?;
             let right_expr = self.sql_interval_to_expr(
                 false,
@@ -228,6 +232,8 @@ impl<S: ContextProvider> SqlToRel<'_, S> {
                     last_field: None,
                     fractional_seconds_precision: None,
                 },
+                schema,
+                planner_context,
             )?;
             return Ok(Expr::BinaryExpr(BinaryExpr::new(
                 Box::new(left_expr),
@@ -236,22 +242,43 @@ impl<S: ContextProvider> SqlToRel<'_, S> {
             )));
         }
 
-        let value = interval_literal(*interval.value, negative)?;
+        if let Some(value) = interval_literal(*interval.value.clone(), negative)? {
+            // leading_field really means the unit if specified
+            // For example, "month" in  `INTERVAL '5' month`
+            let value = match interval.leading_field.as_ref() {
+                Some(leading_field) => format!("{value} {leading_field}"),
+                None => value,
+            };
 
-        // leading_field really means the unit if specified
-        // For example, "month" in  `INTERVAL '5' month`
-        let value = match interval.leading_field.as_ref() {
-            Some(leading_field) => format!("{value} {leading_field}"),
-            None => value,
-        };
+            let config = IntervalParseConfig::new(IntervalUnit::Second);
+            let val = parse_interval_month_day_nano_config(&value, config)?;
+            Ok(lit(ScalarValue::IntervalMonthDayNano(Some(val))))
+        } else {
+            let Some(leading_field) = interval.leading_field.as_ref() else {
+                return not_impl_err!("Unsupported interval expression: {interval:?}");
+            };
 
-        let config = IntervalParseConfig::new(IntervalUnit::Second);
-        let val = parse_interval_month_day_nano_config(&value, config)?;
-        Ok(lit(ScalarValue::IntervalMonthDayNano(Some(val))))
+            let mut interval_expr = self.sql_expr_to_logical_expr(
+                *interval.value.clone(),
+                schema,
+                planner_context,
+            )?;
+            for planner in self.context_provider.get_expr_planners() {
+                match planner.plan_interval(
+                    interval_expr,
+                    negative,
+                    Some(leading_field.clone()),
+                )? {
+                    PlannerResult::Planned(args) => return Ok(args),
+                    PlannerResult::Original(args) => interval_expr = args,
+                }
+            }
+            not_impl_err!("Unsupported interval expression: {interval:?}")
+        }
     }
 }
 
-fn interval_literal(interval_value: SQLExpr, negative: bool) -> Result<String> {
+fn interval_literal(interval_value: SQLExpr, negative: bool) -> Result<Option<String>> {
     let s = match interval_value {
         SQLExpr::Value(ValueWithSpan {
             value: Value::SingleQuotedString(s) | Value::DoubleQuotedString(s),
@@ -262,9 +289,7 @@ fn interval_literal(interval_value: SQLExpr, negative: bool) -> Result<String> {
             span: _,
         }) => {
             if long {
-                return not_impl_err!(
-                    "Unsupported interval argument. Long number not supported: {interval_value:?}"
-                );
+                return Ok(None);
             } else {
                 v.to_string()
             }
@@ -274,21 +299,23 @@ fn interval_literal(interval_value: SQLExpr, negative: bool) -> Result<String> {
                 UnaryOperator::Minus => !negative,
                 UnaryOperator::Plus => negative,
                 _ => {
-                    return not_impl_err!(
-                        "Unsupported SQL unary operator in interval {op:?}"
-                    );
+                    return Ok(None);
                 }
             };
-            interval_literal(*expr, negative)?
+            if let Some(s) = interval_literal(*expr, negative)? {
+                s
+            } else {
+                return Ok(None);
+            }
         }
         _ => {
-            return not_impl_err!("Unsupported interval argument. Expected string literal or number, got: {interval_value:?}");
+            return Ok(None);
         }
     };
     if negative {
-        Ok(format!("-{s}"))
+        Ok(Some(format!("-{s}")))
     } else {
-        Ok(s)
+        Ok(Some(s))
     }
 }
 

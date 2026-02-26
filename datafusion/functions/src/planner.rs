@@ -20,8 +20,10 @@
 use datafusion_common::Result;
 use datafusion_expr::{
     expr::ScalarFunction,
+    lit,
     planner::{ExprPlanner, PlannerResult},
-    Expr,
+    sqlparser::ast::DateTimeField,
+    BinaryExpr, Expr, Operator,
 };
 
 #[derive(Default, Debug)]

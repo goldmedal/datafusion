@@ -804,6 +804,143 @@ macro_rules! make_error {
     };
 }
 
+/// Assert equality, returning `DataFusionError::Internal` on failure.
+///
+/// # Examples
+///
+/// ```text
+/// assert_eq_or_internal_err!(actual, expected);
+/// assert_eq_or_internal_err!(left_expr, right_expr, "values must match");
+/// assert_eq_or_internal_err!(lhs, rhs, "metadata: {}", extra);
+/// ```
+#[macro_export]
+macro_rules! assert_eq_or_internal_err {
+    ($left:expr, $right:expr $(,)?) => {{
+        let left_val = &$left;
+        let right_val = &$right;
+        if left_val != right_val {
+            return Err($crate::DataFusionError::Internal(format!(
+                "Assertion failed: {} == {} (left: {:?}, right: {:?})",
+                stringify!($left),
+                stringify!($right),
+                left_val,
+                right_val
+            )));
+        }
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
+        let left_val = &$left;
+        let right_val = &$right;
+        if left_val != right_val {
+            return Err($crate::DataFusionError::Internal(format!(
+                "Assertion failed: {} == {} (left: {:?}, right: {:?}): {}",
+                stringify!($left),
+                stringify!($right),
+                left_val,
+                right_val,
+                format!($($arg)+)
+            )));
+        }
+    }};
+}
+
+/// Assert inequality, returning `DataFusionError::Internal` on failure.
+///
+/// # Examples
+///
+/// ```text
+/// assert_ne_or_internal_err!(left, right);
+/// assert_ne_or_internal_err!(lhs_expr, rhs_expr, "values must differ");
+/// assert_ne_or_internal_err!(a, b, "context {}", info);
+/// ```
+#[macro_export]
+macro_rules! assert_ne_or_internal_err {
+    ($left:expr, $right:expr $(,)?) => {{
+        let left_val = &$left;
+        let right_val = &$right;
+        if left_val == right_val {
+            return Err($crate::DataFusionError::Internal(format!(
+                "Assertion failed: {} != {} (left: {:?}, right: {:?})",
+                stringify!($left),
+                stringify!($right),
+                left_val,
+                right_val
+            )));
+        }
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
+        let left_val = &$left;
+        let right_val = &$right;
+        if left_val == right_val {
+            return Err($crate::DataFusionError::Internal(format!(
+                "Assertion failed: {} != {} (left: {:?}, right: {:?}): {}",
+                stringify!($left),
+                stringify!($right),
+                left_val,
+                right_val,
+                format!($($arg)+)
+            )));
+        }
+    }};
+}
+
+/// Add a macros for concise  DataFusionError::* errors declaration
+/// supports placeholders the same way as `format!`
+/// Examples:
+///     plan_err!("Error")
+///     plan_err!("Error {}", val)
+///     plan_err!("Error {:?}", val)
+///     plan_err!("Error {val}")
+///     plan_err!("Error {val:?}")
+///
+/// `NAME_ERR` -  macro name for wrapping Err(DataFusionError::*)
+/// `NAME_DF_ERR` -  macro name for wrapping DataFusionError::*. Needed to keep backtrace opportunity
+/// in construction where DataFusionError::* used directly, like `map_err`, `ok_or_else`, etc
+macro_rules! make_error {
+    ($NAME_ERR:ident, $NAME_DF_ERR: ident, $ERR:ident) => { make_error!(@inner ($), $NAME_ERR, $NAME_DF_ERR, $ERR); };
+    (@inner ($d:tt), $NAME_ERR:ident, $NAME_DF_ERR:ident, $ERR:ident) => {
+        ::paste::paste!{
+            /// Macro wraps `$ERR` to add backtrace feature
+            #[macro_export]
+            macro_rules! $NAME_DF_ERR {
+                ($d($d args:expr),* $d(; diagnostic=$d DIAG:expr)?) => {{
+                    let err =$crate::DataFusionError::$ERR(
+                        ::std::format!(
+                            "{}{}",
+                            ::std::format!($d($d args),*),
+                            $crate::DataFusionError::get_back_trace(),
+                        ).into()
+                    );
+                    $d (
+                        let err = err.with_diagnostic($d DIAG);
+                    )?
+                    err
+                }
+            }
+        }
+
+            /// Macro wraps Err(`$ERR`) to add backtrace feature
+            #[macro_export]
+            macro_rules! $NAME_ERR {
+                ($d($d args:expr),* $d(; diagnostic = $d DIAG:expr)?) => {{
+                    let err = $crate::[<_ $NAME_DF_ERR>]!($d($d args),*);
+                    $d (
+                        let err = err.with_diagnostic($d DIAG);
+                    )?
+                    Err(err)
+
+                }}
+            }
+
+
+            #[doc(hidden)]
+            pub use $NAME_ERR as [<_ $NAME_ERR>];
+            #[doc(hidden)]
+            pub use $NAME_DF_ERR as [<_ $NAME_DF_ERR>];
+        }
+    };
+}
+
 // Exposes a macro to create `DataFusionError::Plan` with optional backtrace
 make_error!(plan_err, plan_datafusion_err, Plan);
 

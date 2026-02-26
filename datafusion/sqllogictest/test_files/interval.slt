@@ -589,5 +589,15 @@ select
 ----
 true true true true true true
 
+query ?
+select interval (1 + 1) day
+----
+2 days
+
+query ?
+select interval - (1 + 1) day
+----
+-2 days
+
 statement ok
 drop table t

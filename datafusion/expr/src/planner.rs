@@ -25,7 +25,7 @@ use datafusion_common::{
     config::ConfigOptions, file_options::file_type::FileType, not_impl_err, DFSchema,
     Result, TableReference,
 };
-use sqlparser::ast::{self, NullTreatment};
+use sqlparser::ast::{self, DateTimeField, NullTreatment};
 
 use crate::{
     AggregateUDF, Expr, GetFieldAccess, ScalarUDF, SortExpr, TableSource, WindowFrame,
@@ -248,6 +248,16 @@ pub trait ExprPlanner: Debug + Send + Sync {
     ///
     /// Returns original expression arguments if not possible
     fn plan_window(&self, expr: RawWindowExpr) -> Result<PlannerResult<RawWindowExpr>> {
+        Ok(PlannerResult::Original(expr))
+    }
+
+    /// Plan an interval with argument expressions, such as `INTERVAL (1 + 1) DAY`
+    fn plan_interval(
+        &self,
+        expr: Expr,
+        _negative: bool,
+        _leading_field: Option<DateTimeField>,
+    ) -> Result<PlannerResult<Expr>> {
         Ok(PlannerResult::Original(expr))
     }
 }
